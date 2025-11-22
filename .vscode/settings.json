@@ -1,0 +1,16 @@
+{
+  // Python interpreter from uv virtual environment
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+
+  // Terminal settings
+  "python.terminal.activateEnvironment": true,
+  "python.terminal.executeInFileDir": false,
+
+  // Jupyter settings for notebooks
+  "jupyter.notebookFileRoot": "${workspaceFolder}",
+
+  // Python formatting and linting (optional - uncomment if you want to add these later)
+  // "python.formatting.provider": "black",
+  // "python.linting.enabled": true,
+  // "python.linting.pylintEnabled": true
+}
