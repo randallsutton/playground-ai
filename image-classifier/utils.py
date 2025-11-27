@@ -2,7 +2,29 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
-from torchvision import models
+from torch import nn
+from torchvision import models, transforms
+
+
+def build_model(arch, hidden_units, num_classes):
+    """Creates a VGG model with a custom classifier."""
+    if arch == "vgg13":
+        model = models.vgg13(weights=models.VGG13_Weights.IMAGENET1K_V1)
+    else:
+        model = models.vgg16(weights=models.VGG16_Weights.IMAGENET1K_V1)
+
+    for param in model.parameters():
+        param.requires_grad = False
+
+    model.classifier = nn.Sequential(
+        nn.Linear(25088, hidden_units),
+        nn.ReLU(),
+        nn.Dropout(0.5),
+        nn.Linear(hidden_units, num_classes),
+        nn.LogSoftmax(dim=1)
+    )
+
+    return model
 
 
 def display_prediction(image_path, model, cat_to_name, topk=5):
@@ -31,6 +53,31 @@ def display_prediction(image_path, model, cat_to_name, topk=5):
 
     plt.tight_layout()
     plt.show()
+
+
+def get_data_transforms():
+    """Returns data transforms for train, valid, and test sets."""
+    return {
+        "train": transforms.Compose([
+            transforms.RandomRotation(30),
+            transforms.RandomResizedCrop(224),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ]),
+        "valid": transforms.Compose([
+            transforms.Resize(255),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ]),
+        "test": transforms.Compose([
+            transforms.Resize(255),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ]),
+    }
 
 
 def get_device():
@@ -72,7 +119,11 @@ def load_checkpoint(filepath):
     """Loads a saved model checkpoint and returns the model."""
     checkpoint = torch.load(filepath, weights_only=False)
 
-    model = models.vgg16(weights=models.VGG16_Weights.IMAGENET1K_V1)
+    arch = checkpoint.get("arch", "vgg16")
+    if arch == "vgg13":
+        model = models.vgg13(weights=models.VGG13_Weights.IMAGENET1K_V1)
+    else:
+        model = models.vgg16(weights=models.VGG16_Weights.IMAGENET1K_V1)
 
     for param in model.parameters():
         param.requires_grad = False
@@ -138,3 +189,15 @@ def process_image(image):
 
     # Set color channel to first dimension
     return np_image.transpose((2, 0, 1))
+
+
+def save_checkpoint(model, train_dataset, epochs, filepath, arch="vgg16"):
+    """Saves a model checkpoint."""
+    checkpoint = {
+        "arch": arch,
+        "state_dict": model.state_dict(),
+        "class_to_idx": train_dataset.class_to_idx,
+        "classifier": model.classifier,
+        "epochs": epochs,
+    }
+    torch.save(checkpoint, filepath)
